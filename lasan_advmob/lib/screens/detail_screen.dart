@@ -20,12 +20,28 @@ class _DetailScreenState extends State<DetailScreen> {
   bool _isSaving = false;
   late TextEditingController _titleController;
   late TextEditingController _bodyController;
+  late String _viewTitle;
+  late String _viewBody;
 
   @override
   void initState() {
     super.initState();
-    _titleController = TextEditingController(text: widget.title);
-    _bodyController = TextEditingController(text: widget.body);
+    _viewTitle = widget.title;
+    _viewBody = widget.body;
+    _titleController = TextEditingController(text: _viewTitle);
+    _bodyController = TextEditingController(text: _viewBody);
+  }
+
+  void _cancelEdits() {
+    if (_isSaving) return;
+    setState(() {
+      _titleController.text = _viewTitle;
+      _bodyController.text = _viewBody;
+      _isEditMode = false;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Changes discarded.')),
+    );
   }
 
   Future<void> _saveEdits() async {
@@ -49,7 +65,11 @@ class _DetailScreenState extends State<DetailScreen> {
 
       await ArticleService().updateArticle(widget.article!.aid, updated);
       if (mounted) {
-        setState(() => _isEditMode = false);
+        setState(() {
+          _viewTitle = _titleController.text.trim();
+          _viewBody = _bodyController.text;
+          _isEditMode = false;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Article updated.')),
         );
@@ -80,7 +100,13 @@ class _DetailScreenState extends State<DetailScreen> {
               icon: Icon(_isEditMode ? Icons.close : Icons.edit),
               onPressed: _isSaving
                   ? null
-                  : () => setState(() => _isEditMode = !_isEditMode),
+                  : () {
+                      if (_isEditMode) {
+                        _cancelEdits();
+                      } else {
+                        setState(() => _isEditMode = true);
+                      }
+                    },
             ),
         ],
       ),
@@ -94,12 +120,12 @@ class _DetailScreenState extends State<DetailScreen> {
             SizedBox(height: 10.h),
             if (!_isEditMode) ...[
               CustomText(
-                text: widget.title,
+                text: _viewTitle,
                 fontSize: 24.sp,
                 fontWeight: FontWeight.bold,
               ),
               SizedBox(height: 20.h),
-              CustomText(text: widget.body, fontSize: 16.sp),
+              CustomText(text: _viewBody, fontSize: 16.sp),
             ] else ...[
               TextField(
                 controller: _titleController,
@@ -119,19 +145,27 @@ class _DetailScreenState extends State<DetailScreen> {
                 ),
               ),
               SizedBox(height: 12.h),
-              Align(
-                alignment: Alignment.centerRight,
-                child: ElevatedButton.icon(
-                  onPressed: _isSaving ? null : _saveEdits,
-                  icon: _isSaving
-                      ? SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.save),
-                  label: Text(_isSaving ? 'Saving…' : 'Save changes'),
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: _isSaving ? null : _cancelEdits,
+                    icon: const Icon(Icons.undo),
+                    label: const Text('Cancel'),
+                  ),
+                  SizedBox(width: 12.w),
+                  ElevatedButton.icon(
+                    onPressed: _isSaving ? null : _saveEdits,
+                    icon: _isSaving
+                        ? SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.save),
+                    label: Text(_isSaving ? 'Saving…' : 'Save changes'),
+                  ),
+                ],
               ),
             ],
           ],

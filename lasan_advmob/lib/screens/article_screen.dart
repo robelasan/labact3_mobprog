@@ -180,6 +180,7 @@ class _ArticleScreenState extends State<ArticleScreen> {
                                     ? 'Untitled'
                                     : article.title,
                                 body: body,
+                                article: article,
                               ),
                             ),
                           );
