@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:lasan_advmob/screens/detail_screen.dart';
 import 'package:lasan_advmob/services/article_service.dart';
+import 'package:lasan_advmob/widgets/article_dialog.dart';
 import '../models/article_model.dart';
 import '../widgets/custom_text.dart';
 
@@ -53,145 +54,18 @@ class _ArticleScreenState extends State<ArticleScreen> {
   }
 
   Future<void> _openAddArticleDialog() async {
-    final titleController = TextEditingController();
-    final authorController = TextEditingController();
-    final contentController = TextEditingController();
-    final formKey = GlobalKey<FormState>();
-    bool isSaving = false;
-    bool isActive = true;
-
-    await showDialog<void>(
-      context: context,
-      barrierDismissible: !isSaving, 
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (ctx, setLocalState) {
-            List<String> _toList(String raw) {
-              return raw
-                .split(RegExp(r'[\n,]'))
-                .map((s) => s.trim())
-                .where((s) => s.isNotEmpty)
-                .toList();
-            }
-
-            Future<void> save() async {
-              if (isSaving) return;
-              if (!formKey.currentState!.validate()) return;
-
-              setLocalState(() => isSaving = true);
-              try {
-                final payload = {
-                  'title': titleController.text.trim(),
-                  'name': authorController.text.trim(),
-                  'content': _toList(contentController.text),
-                  'isActive': isActive,
-                };
-                
-                final Map res = await ArticleService().createArticle(payload);
-
-                final created = (res['article']  ?? res);
-                final newArticle = Article.fromJson(created);
-
-                setState(() {
-                  _allArticles.insert(0, newArticle);
-                  // Refresh filtered view based on current query
-                  _onSearchChanged();
-                });
-
-                if (ctx.mounted) Navigator.of(ctx).pop();
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Article added.')),
-                  );
-                }
-              } catch (e) {
-                setLocalState(() => isSaving = false);
-                if (mounted) {
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(SnackBar(content: Text('Failed to add $e')));
-                }
-              }
-            }
-            return AlertDialog(
-              title: const Text('Add Article'),
-              content: Form(
-                key: formKey,
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      TextFormField(
-                        controller: titleController,
-                        textInputAction: TextInputAction.next,
-                        decoration: const InputDecoration(
-                          labelText: 'Title',
-                          border: OutlineInputBorder(),
-                        ),
-                        validator: (v) =>
-                          (v == null || v.trim().isEmpty) ? 'Required' : null,
-                      ),
-                      SizedBox(height: 12.h),
-                      TextFormField(
-                        controller: authorController,
-                        textInputAction: TextInputAction.next,
-                        decoration: const InputDecoration(
-                          labelText: 'Author / Name',
-                          border: OutlineInputBorder(),
-                        ),
-                        validator: (v) => 
-                          (v == null || v.trim().isEmpty) ? 'Required' : null,
-                      ),
-                      SizedBox(height: 12.h),
-                      TextFormField(
-                        controller: contentController,
-                        minLines: 3,
-                        maxLines: 6,
-                        decoration: const InputDecoration(
-                          labelText: 'Content (one item per line or comma-separated)',
-                          border: OutlineInputBorder(),
-                          alignLabelWithHint: true,
-                        ),
-                        validator: (v) {
-                          final items = v == null
-                            ? []
-                            : v
-                                .trim()
-                                .split(RegExp(r'[\n,]'))
-                                .where((s) => s.trim().isNotEmpty)
-                                .toList();
-                          return items.isEmpty
-                            ? 'At least one content item'
-                            : null;
-                        },
-                      ),
-                      SizedBox(height: 8.h),
-                      SwitchListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: const Text('Active'),
-                        value: isActive,
-                        onChanged: (val) => setLocalState(() => isActive = val),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: isSaving ? null : () => Navigator.of(ctx).pop(), 
-                  child: const Text('Cancel'),
-                  ),
-                  ElevatedButton.icon(
-                    onPressed: isSaving ? null : () { save(); },
-                    icon: Icon(Icons.save),
-                    label: (Text('Save')),
-                ),
-              ],
-            );
-          },
+    final Article? created = await ArticleDialog.showAdd(context);
+    if (created != null) {
+      setState(() {
+        _allArticles.insert(0, created);
+        _onSearchChanged();
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Article added.')),
         );
-      },
-    );
+      }
+    }
   }
 
   Widget _statusChip(bool active) {
