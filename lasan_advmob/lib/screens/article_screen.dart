@@ -295,7 +295,20 @@ class _ArticleScreenState extends State<ArticleScreen> {
                       child: InkWell(
                         onTap: () {
                           debugPrint('Tapped index $index: ${article.aid}');
-                          //Navigation to detail screen
+                          final body = article.content.isNotEmpty
+                              ? article.content.join('\n\n')
+                              : '';
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => DetailScreen(
+                                title: article.title.isEmpty
+                                    ? 'Untitled'
+                                    : article.title,
+                                body: body,
+                              ),
+                            ),
+                          );
                         },
                         child: Container(
                           padding: EdgeInsets.symmetric(
